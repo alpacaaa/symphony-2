@@ -1389,7 +1389,7 @@
 		public function generate($indent = false, $parent = null) {
 			$output = false;
 
-			if (!$parent) {
+			if (!$parent instanceof XMLWriter) {
 				$parent = new XMLWriter;
 				$parent->openMemory();
 				$parent->setIndent($indent);
