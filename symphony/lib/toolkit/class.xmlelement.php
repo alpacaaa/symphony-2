@@ -637,13 +637,13 @@
 		 * The name of the HTML Element, eg. 'p'
 		 * @var string
 		 */
-		private $_name;
+		protected $_name;
 
 		/**
 		 * The value of this `XMLElement` as a string
 		 * @var string
 		 */
-		private $_value;
+		protected $_value;
 
 		/**
 		 * Any additional attributes can be included in an associative array
@@ -651,52 +651,52 @@
 		 * attribute.
 		 * @var array
 		 */
-		private $_attributes = array();
+		protected $_attributes = array();
 
 		/**
 		 * Children of this `XMLElement`, which will also be `XMLElement`'s
 		 * @var array
 		 */
-		private $_children = array();
+		protected $_children = array();
 
 		/**
 		 * Any processing instructions that the XSLT should know about when a
 		 * `XMLElement` is generated
 		 * @var array
 		 */
-		private $_processingInstructions = array();
+		protected $_processingInstructions = array();
 
 		/**
 		 * The DTD the should be output when a `XMLElement` is generated, defaults to null.
 		 * @var string
 		 */
-		private $_dtd = null;
+		protected $_dtd = null;
 
 		/**
 		 * The encoding of the `XMLElement`, defaults to 'utf-8'
 		 * @var string
 		 */
-		private $_encoding = 'utf-8';
+		protected $_encoding = 'utf-8';
 
 		/**
 		 * The version of the XML that is used for generation, defaults to '1.0'
 		 * @var string
 		 */
-		private $_version = '1.0';
+		protected $_version = '1.0';
 
 		/**
 		 * The type of element, defaults to 'xml'. Used when determining the style
 		 * of end tag for this element when generated
 		 * @var string
 		 */
-		private $_elementStyle = 'xml';
+		protected $_elementStyle = 'xml';
 
 		/**
 		 * When set to true this will include the XML declaration will be
 		 * output when the `XMLElement` is generated. Defaults to `false`.
 		 * @var boolean
 		 */
-		private $_includeHeader = false;
+		protected $_includeHeader = false;
 
 		/**
 		 * Specifies whether this HTML element has an closing element, or if
@@ -704,7 +704,7 @@
 		 *  eg. `<p></p>` or `<input />`
 		 * @var boolean
 		 */
-		private $_selfclosing = true;
+		protected $_selfclosing = true;
 
 		/**
 		 * Specifies whether attributes need to have a value or if they can
@@ -712,7 +712,7 @@
 		 *  `<option selected>Value</option>`
 		 * @var boolean
 		 */
-		private $_allowEmptyAttributes = true;
+		protected $_allowEmptyAttributes = true;
 
 		/**
 		 * Defaults to `false`, which puts the value before any children elements.
@@ -720,7 +720,7 @@
 		 * to the current `XMLElement`
 		 * @var boolean
 		 */
-		private $_placeValueAfterChildElements = false;
+		protected $_placeValueAfterChildElements = false;
 
 		/**
 		 * The constructor for the `XMLElement`
@@ -1383,6 +1383,51 @@
 		}
 	}
 
+	// XMLWriter XMLElement
+	class XMLElementWriter extends XMLElementArray {
+
+		public function generate($indent = false, $parent = null) {
+			$output = false;
+
+			if (!$parent) {
+				$parent = new XMLWriter;
+				$parent->openMemory();
+				$parent->setIndent($indent);
+
+				if ($this->_includeHeader) {
+					$parent->startDocument($this->_version, $this->_encoding);
+				}
+
+				$output = true;
+			}
+
+			$parent->startElement($this->getName());
+
+			$attributes = $this->getAttributes();
+			foreach($attributes as $attribute => $value ) {
+				if(strlen($value) != 0 || (strlen($value) == 0 && $this->_allowEmptyAttributes)) {
+					$parent->startAttribute($attribute);
+					$parent->text($value);
+					$parent->endAttribute();
+				}
+			}
+
+			$parent->writeRaw($this->getValue());
+
+			foreach($this->_children as $child ){
+				if(!($child instanceof XMLElement)) {
+					throw new Exception('Child is not of type XMLElement');
+				}
+
+				$child->generate($indent, $parent);
+			}
+
+			$parent->endElement();
+
+			return $output ? $parent->outputMemory() : null;
+		}
+	}
+
 	// Use traditional array based XMLElement:
 	if (isset($_GET['xmlelement']) === false || $_GET['xmlelement'] == 'fast') {
 		class XMLElement extends XMLElementFast {}
@@ -1394,6 +1439,10 @@
 
 	else if ($_GET['xmlelement'] == 'array') {
 		class XMLElement extends XMLElementArray {}
+	}
+
+	else if ($_GET['xmlelement'] == 'xmlwriter') {
+		class XMLElement extends XMLElementWriter {}
 	}
 
 	XMLElement::initializeDocument();
